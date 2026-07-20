@@ -1,6 +1,7 @@
 from datetime import date, datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ORMModel(BaseModel):
@@ -61,27 +62,70 @@ class DoctorOut(ORMModel):
 
 
 class PatientCreate(BaseModel):
-    organization_id: int | None = None
-    doctor_id: int | None = None
-    full_name: str = Field(min_length=2, max_length=160)
-    birth_date: date | None = None
-    contact: str | None = Field(default=None, max_length=160)
-    notes: str | None = Field(default=None, max_length=5000)
+    first_name: str = Field(min_length=1, max_length=80)
+    last_name: str = Field(min_length=1, max_length=80)
+    birth_date: date
+    sex: Literal["male", "female", "other", "not_specified"]
+    phone: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=254)
+    height_cm: int | None = Field(default=None, ge=20, le=300)
+    weight_kg: float | None = Field(default=None, gt=0, le=500)
+    emergency_contact: str = Field(min_length=2, max_length=255)
+    consent_to_data_processing: bool
+    diagnosis: str = Field(min_length=2, max_length=5000)
+    diagnosis_date: date | None = None
+    treatment_start_date: date
+    doctor_notes: str = Field(min_length=2, max_length=10000)
+    contraindications: str | None = Field(default=None, max_length=5000)
+    comorbidities: str | None = Field(default=None, max_length=5000)
+    allergies: str | None = Field(default=None, max_length=5000)
+
+    @model_validator(mode="after")
+    def require_delivery_contact(self) -> "PatientCreate":
+        if not self.phone and not self.email:
+            raise ValueError("Укажите телефон или email для Magic Link")
+        return self
 
 
 class PatientUpdate(BaseModel):
-    full_name: str | None = Field(default=None, min_length=2, max_length=160)
+    first_name: str | None = Field(default=None, min_length=1, max_length=80)
+    last_name: str | None = Field(default=None, min_length=1, max_length=80)
     birth_date: date | None = None
-    contact: str | None = Field(default=None, max_length=160)
-    notes: str | None = Field(default=None, max_length=5000)
+    sex: Literal["male", "female", "other", "not_specified"] | None = None
+    phone: str | None = Field(default=None, max_length=32)
+    email: str | None = Field(default=None, max_length=254)
+    height_cm: int | None = Field(default=None, ge=20, le=300)
+    weight_kg: float | None = Field(default=None, gt=0, le=500)
+    emergency_contact: str | None = Field(default=None, max_length=255)
+    diagnosis: str | None = Field(default=None, min_length=2, max_length=5000)
+    diagnosis_date: date | None = None
+    treatment_start_date: date | None = None
+    doctor_notes: str | None = Field(default=None, min_length=2, max_length=10000)
+    contraindications: str | None = Field(default=None, max_length=5000)
+    comorbidities: str | None = Field(default=None, max_length=5000)
+    allergies: str | None = Field(default=None, max_length=5000)
 
 
 class PatientOut(ORMModel):
     id: int
     organization_id: int
     doctor_id: int
+    first_name: str
+    last_name: str
     full_name: str
-    birth_date: date | None
-    contact: str | None
-    notes: str | None
+    birth_date: date
+    sex: str
+    phone: str | None
+    email: str | None
+    height_cm: int | None
+    weight_kg: float | None
+    emergency_contact: str
+    data_processing_consent_at: datetime
+    diagnosis: str
+    diagnosis_date: date | None
+    treatment_start_date: date
+    doctor_notes: str
+    contraindications: str | None
+    comorbidities: str | None
+    allergies: str | None
     created_at: datetime

@@ -1,20 +1,29 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from app.infrastructure.database import SessionLocal
+from app.infrastructure.database import Base, SessionLocal, engine
 from app.infrastructure.models import DoctorModel, OrganizationModel, PatientModel
 from app.main import app, seed_admin
+
+
+def patient_payload(**overrides):
+    payload = {
+        "first_name": "Иван", "last_name": "Петров", "birth_date": "1990-01-15", "sex": "male",
+        "phone": "+79990000000", "emergency_contact": "Мария Петрова, +79990000001",
+        "consent_to_data_processing": True, "diagnosis": "Восстановление после травмы",
+        "treatment_start_date": "2026-07-21", "doctor_notes": "Начать с щадящей нагрузки.",
+    }
+    payload.update(overrides)
+    return payload
 
 
 @pytest.fixture
 def client():
     with TestClient(app) as test_client:
+        Base.metadata.drop_all(bind=engine)
+        Base.metadata.create_all(bind=engine)
         session = SessionLocal()
         try:
-            session.query(PatientModel).delete()
-            session.query(DoctorModel).delete()
-            session.query(OrganizationModel).delete()
-            session.commit()
             seed_admin()
         finally:
             session.close()
@@ -39,13 +48,15 @@ def test_register_auth_and_patient_crud(client):
     })
     assert registration.status_code == 201
     headers = login(client, "doctor.test", "safe-password")
-    created = client.post("/api/v1/patients", headers=headers, json={"full_name": "Иван Петров", "contact": "+79990000000", "notes": "Первичный прием"})
+    created = client.post("/api/v1/patients", headers=headers, json=patient_payload())
     assert created.status_code == 201
     patient_id = created.json()["id"]
+    assert created.json()["doctor_id"] == registration.json()["id"]
+    assert created.json()["data_processing_consent_at"]
     assert client.get("/api/v1/patients", headers=headers).json()[0]["full_name"] == "Иван Петров"
-    updated = client.patch(f"/api/v1/patients/{patient_id}", headers=headers, json={"notes": "Контроль через неделю"})
+    updated = client.patch(f"/api/v1/patients/{patient_id}", headers=headers, json={"doctor_notes": "Контроль через неделю"})
     assert updated.status_code == 200
-    assert updated.json()["notes"] == "Контроль через неделю"
+    assert updated.json()["doctor_notes"] == "Контроль через неделю"
     assert client.delete(f"/api/v1/patients/{patient_id}", headers=headers).status_code == 204
 
 
@@ -54,13 +65,13 @@ def test_tenant_isolation_and_admin_organizations(client):
     client.post("/api/v1/auth/register", json={"organization_name": "Клиника Бета", "username": "beta.doc", "password": "safe-password", "full_name": "Бета Доктор"})
     alpha = login(client, "alpha.doc", "safe-password")
     beta = login(client, "beta.doc", "safe-password")
-    patient_id = client.post("/api/v1/patients", headers=alpha, json={"full_name": "Пациент Альфы"}).json()["id"]
+    patient_id = client.post("/api/v1/patients", headers=alpha, json=patient_payload()).json()["id"]
     assert client.get(f"/api/v1/patients/{patient_id}", headers=beta).status_code == 403
     assert client.get("/api/v1/organizations", headers=alpha).status_code == 403
     assert client.get("/api/v1/organizations", headers=login(client, "admin", "admin")).status_code == 200
 
 
-def test_admin_manages_records_across_organizations(client):
+def test_admin_manages_organizations_and_doctors_but_not_patient_creation(client):
     admin = login(client, "admin", "admin")
     organization = client.post("/api/v1/organizations", headers=admin, json={"name": "Управляемая клиника"}).json()
     doctor = client.post("/api/v1/doctors", headers=admin, json={
@@ -68,10 +79,13 @@ def test_admin_manages_records_across_organizations(client):
     })
     assert doctor.status_code == 201
     doctor = doctor.json()
-    patient = client.post("/api/v1/patients", headers=admin, json={
-        "organization_id": organization["id"], "doctor_id": doctor["id"], "full_name": "Управляемый пациент",
-    })
-    assert patient.status_code == 201
     assert any(item["id"] == doctor["id"] for item in client.get("/api/v1/doctors", headers=admin).json())
     assert client.patch(f"/api/v1/doctors/{doctor['id']}", headers=admin, json={"is_active": False}).status_code == 200
-    assert client.delete(f"/api/v1/patients/{patient.json()['id']}", headers=admin).status_code == 204
+    assert client.post("/api/v1/patients", headers=admin, json=patient_payload()).status_code == 403
+
+
+def test_patient_requires_contact_and_consent(client):
+    client.post("/api/v1/auth/register", json={"organization_name": "Клиника В", "username": "doctor.v", "password": "safe-password", "full_name": "Врач В"})
+    headers = login(client, "doctor.v", "safe-password")
+    assert client.post("/api/v1/patients", headers=headers, json=patient_payload(phone=None, email=None)).status_code == 422
+    assert client.post("/api/v1/patients", headers=headers, json=patient_payload(consent_to_data_processing=False)).status_code == 409

@@ -26,8 +26,25 @@ class Patient:
     id: int
     organization_id: int
     doctor_id: int
-    full_name: str
-    birth_date: date | None
-    contact: str | None
-    notes: str | None
+    first_name: str
+    last_name: str
+    birth_date: date
+    sex: str
+    phone: str | None
+    email: str | None
+    height_cm: int | None
+    weight_kg: float | None
+    emergency_contact: str
+    data_processing_consent_at: datetime
+    diagnosis: str
+    diagnosis_date: date | None
+    treatment_start_date: date
+    doctor_notes: str
+    contraindications: str | None
+    comorbidities: str | None
+    allergies: str | None
     created_at: datetime
+
+    @property
+    def full_name(self) -> str:
+        return f"{self.first_name} {self.last_name}"

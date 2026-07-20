@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime, timezone
 
 from app.application.ports import DoctorRepository, OrganizationRepository, PatientRepository
 from app.application.security import hash_password, verify_password
@@ -69,13 +69,12 @@ class PatientService:
     def list(self, actor: Doctor) -> list[Patient]:
         return self.patients.list_all() if actor.is_admin else self.patients.list_for_organization(actor.organization_id)
     def get(self, actor: Doctor, patient_id: int) -> Patient: return self._own(actor, patient_id)
-    def create(self, actor: Doctor, full_name: str, birth_date: date | None, contact: str | None, notes: str | None, organization_id: int | None = None, doctor_id: int | None = None) -> Patient:
-        target_organization_id = organization_id if actor.is_admin else actor.organization_id
-        target_doctor_id = doctor_id if actor.is_admin else actor.id
-        if target_organization_id is None or target_doctor_id is None: raise ConflictError("Для пациента нужно указать организацию и врача")
-        doctor = self.doctors.get(target_doctor_id)
-        if not doctor or doctor.organization_id != target_organization_id: raise ConflictError("Выбранный врач не относится к организации")
-        return self.patients.create(target_organization_id, target_doctor_id, full_name, birth_date, contact, notes)
+    def create(self, actor: Doctor, consent_to_data_processing: bool, **fields: object) -> Patient:
+        if actor.is_admin:
+            raise ForbiddenError("Пациента создаёт только лечащий врач")
+        if not consent_to_data_processing:
+            raise ConflictError("Нужно получить согласие на обработку персональных данных")
+        return self.patients.create(actor.organization_id, actor.id, data_processing_consent_at=datetime.now(timezone.utc), **fields)
     def update(self, actor: Doctor, patient_id: int, **fields: object) -> Patient:
         self._own(actor, patient_id)
         item = self.patients.update(patient_id, **fields)

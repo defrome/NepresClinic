@@ -16,7 +16,7 @@ def doctor_entity(item: DoctorModel) -> Doctor:
 
 
 def patient_entity(item: PatientModel) -> Patient:
-    return Patient(item.id, item.organization_id, item.doctor_id, item.full_name, item.birth_date, item.contact, item.notes, item.created_at)
+    return Patient(item.id, item.organization_id, item.doctor_id, item.first_name, item.last_name, item.birth_date, item.sex, item.phone, item.email, item.height_cm, item.weight_kg, item.emergency_contact, item.data_processing_consent_at, item.diagnosis, item.diagnosis_date, item.treatment_start_date, item.doctor_notes, item.contraindications, item.comorbidities, item.allergies, item.created_at)
 
 
 class SqlAlchemyOrganizationRepository:
@@ -65,8 +65,8 @@ class SqlAlchemyDoctorRepository:
 
 class SqlAlchemyPatientRepository:
     def __init__(self, session: Session): self.session = session
-    def create(self, organization_id: int, doctor_id: int, full_name: str, birth_date: date | None, contact: str | None, notes: str | None) -> Patient:
-        item = PatientModel(organization_id=organization_id, doctor_id=doctor_id, full_name=full_name, birth_date=birth_date, contact=contact, notes=notes)
+    def create(self, organization_id: int, doctor_id: int, **fields: object) -> Patient:
+        item = PatientModel(organization_id=organization_id, doctor_id=doctor_id, **fields)
         self.session.add(item); self.session.commit(); self.session.refresh(item); return patient_entity(item)
     def get(self, patient_id: int) -> Patient | None:
         item = self.session.get(PatientModel, patient_id); return patient_entity(item) if item else None

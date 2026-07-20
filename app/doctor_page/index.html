@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nepres Clinic — Кабинет врача</title>
+    <link rel="stylesheet" href="/doctor-assets/doctor.css" />
+  </head>
+  <body>
+    <main class="login-shell" id="login-screen">
+      <section class="login-card" aria-labelledby="login-title">
+        <div class="brand-mark"><i data-lucide="cross"></i></div>
+        <div class="login-heading"><p class="eyebrow">Nepres Clinic</p><h1 id="login-title">Кабинет врача</h1><p>Создавайте карточки пациентов и управляйте назначенным лечением.</p></div>
+        <form class="login-form" id="login-form">
+          <label class="field-label" for="username">Логин</label><input class="input" id="username" name="username" autocomplete="username" required />
+          <label class="field-label" for="password">Пароль</label><input class="input" id="password" name="password" type="password" autocomplete="current-password" required />
+          <p class="form-error" id="login-error" role="alert"></p>
+          <button class="button button-primary" id="login-button" type="submit"><i data-lucide="log-in"></i><span>Войти</span></button>
+        </form>
+      </section>
+    </main>
+
+    <main class="app-shell is-hidden" id="doctor-app">
+      <aside class="sidebar">
+        <div class="sidebar-brand"><span class="brand-mark"><i data-lucide="cross"></i></span><span class="brand-name">Nepres Clinic</span></div>
+        <nav class="navigation" aria-label="Навигация кабинета врача">
+          <button class="nav-item is-active" data-view="overview"><i data-lucide="layout-dashboard"></i><span>Обзор</span></button>
+          <button class="nav-item" data-view="patients"><i data-lucide="users-round"></i><span>Мои пациенты</span></button>
+        </nav>
+        <div class="sidebar-bottom"><div class="account"><span class="account-avatar" id="account-avatar">В</span><span class="account-copy"><strong id="account-name">Врач</strong><small>Лечащий врач</small></span></div><button class="nav-item" id="logout-button"><i data-lucide="log-out"></i><span>Выйти</span></button></div>
+      </aside>
+
+      <section class="content-shell">
+        <header class="topbar"><div class="page-heading"><p class="eyebrow" id="page-section">Рабочее пространство</p><h1 id="page-title">Обзор</h1></div><div class="topbar-actions"><label class="search-control"><i data-lucide="search"></i><input id="search-input" type="search" placeholder="Поиск пациента" aria-label="Поиск пациента" /></label><button class="button button-secondary" id="refresh-button"><i data-lucide="refresh-cw"></i><span>Обновить</span></button><button class="button button-primary" id="new-patient-button"><i data-lucide="user-plus"></i><span>Новый пациент</span></button></div></header>
+        <section class="page-content" id="page-content" aria-live="polite"></section>
+      </section>
+    </main>
+
+    <div class="modal-layer is-hidden" id="modal-layer" role="presentation">
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-header"><div><p class="eyebrow">Карточка пациента</p><h2 id="modal-title">Новый пациент</h2></div><button class="icon-button" id="modal-close" aria-label="Закрыть"><i data-lucide="x"></i></button></div>
+        <form class="patient-form" id="patient-form">
+          <section class="form-section"><h3>Основные данные</h3><div class="form-grid"><label class="field-label">Имя<input class="input" name="first_name" required maxlength="80" /></label><label class="field-label">Фамилия<input class="input" name="last_name" required maxlength="80" /></label><label class="field-label">Дата рождения<input class="input" name="birth_date" type="date" required /></label><label class="field-label">Пол<select class="input" name="sex" required><option value="">Выберите</option><option value="female">Женский</option><option value="male">Мужской</option><option value="other">Другой</option><option value="not_specified">Не указан</option></select></label></div></section>
+          <section class="form-section"><h3>Связь и безопасность</h3><div class="form-grid"><label class="field-label">Телефон<input class="input" name="phone" type="tel" maxlength="32" /></label><label class="field-label">Email<input class="input" name="email" type="email" maxlength="254" /></label><label class="field-label field-span">Контакт для экстренной связи<input class="input" name="emergency_contact" required maxlength="255" /></label></div><label class="consent"><input name="consent_to_data_processing" type="checkbox" required /><span>Пациент дал согласие на обработку персональных данных</span></label><p class="field-hint">Время согласия будет зафиксировано сервером при создании карточки.</p></section>
+          <section class="form-section"><h3>Медицинский контекст</h3><div class="form-grid"><label class="field-label field-span">Диагноз или повод обращения<textarea class="textarea" name="diagnosis" required maxlength="5000"></textarea></label><label class="field-label">Дата диагноза<input class="input" name="diagnosis_date" type="date" /></label><label class="field-label">Начало лечения<input class="input" name="treatment_start_date" type="date" required /></label><label class="field-label field-span">Заметки врача<textarea class="textarea" name="doctor_notes" required maxlength="10000"></textarea></label></div></section>
+          <section class="form-section"><h3>Дополнительно</h3><div class="form-grid"><label class="field-label">Рост, см<input class="input" name="height_cm" type="number" min="20" max="300" /></label><label class="field-label">Вес, кг<input class="input" name="weight_kg" type="number" min="1" max="500" step="0.1" /></label><label class="field-label field-span">Противопоказания и ограничения<textarea class="textarea" name="contraindications" maxlength="5000"></textarea></label><label class="field-label field-span">Сопутствующие заболевания<textarea class="textarea" name="comorbidities" maxlength="5000"></textarea></label><label class="field-label field-span">Аллергии<textarea class="textarea" name="allergies" maxlength="5000"></textarea></label></div></section>
+          <p class="form-error" id="patient-error" role="alert"></p><div class="modal-actions"><button class="button button-secondary" type="button" id="modal-cancel">Отмена</button><button class="button button-primary" id="patient-submit" type="submit"><i data-lucide="save"></i><span>Создать пациента</span></button></div>
+        </form>
+      </section>
+    </div>
+    <script src="https://unpkg.com/lucide@latest"></script><script src="/doctor-assets/doctor.js"></script>
+  </body>
+</html>

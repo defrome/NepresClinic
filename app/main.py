@@ -48,7 +48,9 @@ app = FastAPI(
 )
 app.include_router(router)
 admin_page_directory = Path(__file__).parent / "admin_page"
+doctor_page_directory = Path(__file__).parent / "doctor_page"
 app.mount("/admin-assets", StaticFiles(directory=admin_page_directory), name="admin-assets")
+app.mount("/doctor-assets", StaticFiles(directory=doctor_page_directory), name="doctor-assets")
 
 
 @app.get("/get_admin_page", include_in_schema=False)
@@ -56,6 +58,13 @@ app.mount("/admin-assets", StaticFiles(directory=admin_page_directory), name="ad
 def get_admin_page() -> FileResponse:
     """Serve the native HTML/CSS/JS administration interface."""
     return FileResponse(admin_page_directory / "index.html")
+
+
+@app.get("/get_doctor_page", include_in_schema=False)
+@app.get("/doctor", include_in_schema=False)
+def get_doctor_page() -> FileResponse:
+    """Serve the native doctor workspace."""
+    return FileResponse(doctor_page_directory / "index.html")
 
 
 @app.get("/health", tags=["system"])

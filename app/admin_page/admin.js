@@ -52,6 +52,7 @@
   function cellValue(item, key) {
     if (key === "created_at" || key === "birth_date") return formatDate(item[key]);
     if (key === "is_active") return item[key] ? `<span class="status">Активен</span>` : "Неактивен";
+    if (key === "contact") return escape(item.phone || item.email || "—");
     if (key === "organization_id") return escape(state.organizations.find((organization) => organization.id === item[key])?.name || `#${item[key]}`);
     if (key === "doctor_id") return escape(state.doctors.find((doctor) => doctor.id === item[key])?.full_name || `#${item[key]}`);
     return escape(item[key]);
@@ -73,6 +74,8 @@
     $("#page-title").textContent = view === "overview" ? "Обзор" : schema.title;
     $("#page-section").textContent = view === "overview" ? "Администрирование" : schema.section;
     $("#new-button-label").textContent = view === "overview" ? "Организация" : schema.action;
+    $("#new-button").disabled = view === "patients";
+    $("#new-button").title = view === "patients" ? "Пациента создаёт лечащий врач в своём кабинете" : "";
     loading();
     try {
       if (view === "overview") {
