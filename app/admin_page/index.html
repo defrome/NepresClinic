@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nepres Clinic — Администрирование</title>
+    <link rel="stylesheet" href="/admin-assets/admin.css" />
+  </head>
+  <body>
+    <main class="login-shell" id="login-screen">
+      <section class="login-card" aria-labelledby="login-title">
+        <div class="brand-mark" aria-hidden="true"><i data-lucide="cross"></i></div>
+        <div class="login-heading">
+          <p class="eyebrow">Nepres Clinic</p>
+          <h1 id="login-title">Вход в админ-панель</h1>
+          <p>Управляйте организациями, врачами и пациентами.</p>
+        </div>
+        <form class="login-form" id="login-form">
+          <label class="field-label" for="username">Логин</label>
+          <input class="input" id="username" name="username" autocomplete="username" required />
+          <label class="field-label" for="password">Пароль</label>
+          <input class="input" id="password" name="password" type="password" autocomplete="current-password" required />
+          <p class="form-error" id="login-error" role="alert"></p>
+          <button class="button button-primary" id="login-button" type="submit">
+            <i data-lucide="log-in"></i><span>Войти</span>
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <main class="app-shell is-hidden" id="admin-app">
+      <aside class="sidebar">
+        <div class="sidebar-brand"><span class="brand-mark"><i data-lucide="cross"></i></span><span class="brand-name">Nepres Clinic</span></div>
+        <nav class="navigation" aria-label="Основная навигация">
+          <button class="nav-item is-active" data-view="overview"><i data-lucide="layout-dashboard"></i><span>Обзор</span></button>
+          <button class="nav-item" data-view="organizations"><i data-lucide="building-2"></i><span>Организации</span></button>
+          <button class="nav-item" data-view="doctors"><i data-lucide="stethoscope"></i><span>Врачи</span></button>
+          <button class="nav-item" data-view="patients"><i data-lucide="users-round"></i><span>Пациенты</span></button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="account"><span class="account-avatar">A</span><span class="account-copy"><strong id="account-name">Администратор</strong><small>Системный доступ</small></span></div>
+          <button class="nav-item logout-button" id="logout-button"><i data-lucide="log-out"></i><span>Выйти</span></button>
+        </div>
+      </aside>
+
+      <section class="content-shell">
+        <header class="topbar">
+          <div class="page-heading"><p class="eyebrow" id="page-section">Администрирование</p><h1 id="page-title">Обзор</h1></div>
+          <div class="topbar-actions">
+            <label class="search-control"><i data-lucide="search"></i><input id="search-input" type="search" placeholder="Поиск" aria-label="Поиск" /></label>
+            <button class="button button-secondary" id="refresh-button"><i data-lucide="refresh-cw"></i><span>Обновить</span></button>
+            <button class="button button-primary" id="new-button"><i data-lucide="plus"></i><span id="new-button-label">Организация</span></button>
+          </div>
+        </header>
+
+        <section class="page-content" id="page-content" aria-live="polite"></section>
+      </section>
+    </main>
+
+    <div class="modal-layer is-hidden" id="modal-layer" role="presentation">
+      <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-header"><h2 id="modal-title">Новая организация</h2><button class="icon-button" id="modal-close" aria-label="Закрыть"><i data-lucide="x"></i></button></div>
+        <form id="create-form" class="modal-form"></form>
+      </section>
+    </div>
+
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="/admin-assets/admin.js"></script>
+  </body>
+</html>
