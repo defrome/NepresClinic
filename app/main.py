@@ -9,7 +9,9 @@ from app.api.routes import router
 from app.application.security import hash_password
 from app.domain.exceptions import ConflictError, DomainError, ForbiddenError, NotFoundError
 from app.infrastructure.database import Base, SessionLocal, engine
-from app.infrastructure.models import DoctorModel, OrganizationModel  # register ORM mappings
+from app.modules.doctors.infrastructure.model import DoctorModel
+from app.modules.organizations.infrastructure.model import OrganizationModel  # register ORM mappings
+from app.modules.patients.infrastructure.model import PatientModel  # register patient mapping
 
 
 def seed_admin() -> None:

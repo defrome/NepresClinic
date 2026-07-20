@@ -20,10 +20,20 @@
   function renderPatients() {
     const query = $("#search-input").value.trim().toLowerCase();
     const visible = state.patients.filter((patient) => `${patient.first_name} ${patient.last_name} ${patient.phone || ""} ${patient.email || ""}`.toLowerCase().includes(query));
-    const row = (patient) => `<div class="table-row"><div class="table-cell is-wide" title="${escape(patient.full_name)}">${escape(patient.full_name)}</div><div class="table-cell">${escape(patient.sex === "male" ? "Мужской" : patient.sex === "female" ? "Женский" : "Не указан")}</div><div class="table-cell">${escape(patient.phone || patient.email)}</div><div class="table-cell">${escape(patient.diagnosis)}</div></div>`;
+    const row = (patient) => `<button class="table-row patient-row" type="button" data-patient-id="${patient.id}" aria-label="Открыть подробности: ${escape(patient.full_name)}"><span class="table-cell is-wide" title="${escape(patient.full_name)}">${escape(patient.full_name)}</span><span class="table-cell">${escape(patient.sex === "male" ? "Мужской" : patient.sex === "female" ? "Женский" : "Не указан")}</span><span class="table-cell">${escape(patient.phone || patient.email)}</span><span class="table-cell">${escape(patient.diagnosis)}</span></button>`;
     $("#page-content").innerHTML = `<section class="patients-view"><section class="panel"><div class="panel-heading"><h2>Мои пациенты</h2><p>${visible.length} из ${state.patients.length}</p></div>${visible.length ? `<div class="table"><div class="table-row table-head"><div class="table-cell is-wide">Пациент</div><div class="table-cell">Пол</div><div class="table-cell">Контакт</div><div class="table-cell">Диагноз / повод</div></div>${visible.map(row).join("")}</div>` : empty(query ? "Ничего не найдено" : "Пациентов пока нет", query ? "Попробуйте изменить запрос поиска." : "Создайте первую карточку пациента — она будет привязана к вашему профилю.", "users-round").replace('<section class="panel">', '').replace('</section>', '')}</section></section>`;
     icon();
   }
+  const formatDate = (value) => value ? new Date(`${value}T00:00:00`).toLocaleDateString("ru-RU") : "Не указано";
+  const detailField = (label, value) => `<div class="detail-field"><dt>${label}</dt><dd>${escape(value || "Не указано")}</dd></div>`;
+  function showPatientDetail(patient) {
+    if (!patient) return;
+    const age = patient.birth_date ? Math.floor((Date.now() - new Date(`${patient.birth_date}T00:00:00`)) / 31557600000) : null;
+    $("#patient-detail-title").textContent = patient.full_name;
+    $("#patient-detail-content").innerHTML = `<div class="patient-identity"><span class="patient-avatar">${escape(patient.first_name?.charAt(0))}</span><div><h3>${escape(patient.full_name)}</h3><p>Пациент №${escape(patient.id)} · ${age === null ? "Возраст не указан" : `${age} лет`}</p></div></div><section class="detail-section"><h3>Основные данные</h3><dl class="detail-grid">${detailField("Дата рождения", formatDate(patient.birth_date))}${detailField("Пол", patient.sex === "male" ? "Мужской" : patient.sex === "female" ? "Женский" : patient.sex === "other" ? "Другой" : "Не указан")}${detailField("Телефон", patient.phone)}${detailField("Email", patient.email)}${detailField("Экстренный контакт", patient.emergency_contact)}</dl></section><section class="detail-section"><h3>Медицинский контекст</h3><dl class="detail-grid">${detailField("Диагноз / повод обращения", patient.diagnosis)}${detailField("Дата диагноза", formatDate(patient.diagnosis_date))}${detailField("Начало лечения", formatDate(patient.treatment_start_date))}${detailField("Рост", patient.height_cm ? `${patient.height_cm} см` : null)}${detailField("Вес", patient.weight_kg ? `${patient.weight_kg} кг` : null)}${detailField("Аллергии", patient.allergies)}${detailField("Противопоказания", patient.contraindications)}${detailField("Сопутствующие заболевания", patient.comorbidities)}${detailField("Заметки врача", patient.doctor_notes)}</dl></section><p class="detail-meta">Карточка создана ${formatDate(patient.created_at?.slice(0, 10))}. Согласие на обработку данных зафиксировано.</p>`;
+    $("#patient-detail-layer").classList.remove("is-hidden"); icon();
+  }
+  function hidePatientDetail() { $("#patient-detail-layer").classList.add("is-hidden"); }
   async function renderCurrent() {
     $("#page-title").textContent = state.view === "overview" ? "Обзор" : "Мои пациенты";
     $("#page-section").textContent = state.view === "overview" ? "Рабочее пространство" : "Пациенты";
@@ -45,6 +55,8 @@
   document.querySelectorAll(".nav-item[data-view]").forEach((button) => button.addEventListener("click", () => { state.view = button.dataset.view; document.querySelectorAll(".nav-item[data-view]").forEach((item) => item.classList.toggle("is-active", item === button)); renderCurrent(); }));
   $("#refresh-button").addEventListener("click", renderCurrent); $("#search-input").addEventListener("input", () => { if (state.view === "patients") renderPatients(); });
   $("#new-patient-button").addEventListener("click", showModal); $("#modal-close").addEventListener("click", hideModal); $("#modal-cancel").addEventListener("click", hideModal); $("#modal-layer").addEventListener("click", (event) => { if (event.target === event.currentTarget) hideModal(); });
+  $("#page-content").addEventListener("click", (event) => { const row = event.target.closest("[data-patient-id]"); if (row) showPatientDetail(state.patients.find((patient) => patient.id === Number(row.dataset.patientId))); });
+  $("#patient-detail-close").addEventListener("click", hidePatientDetail); $("#patient-detail-layer").addEventListener("click", (event) => { if (event.target === event.currentTarget) hidePatientDetail(); });
   $("#patient-form").addEventListener("submit", async (event) => {
     event.preventDefault(); const button = $("#patient-submit"); const fields = Object.fromEntries(new FormData(event.currentTarget));
     ["phone","email","height_cm","weight_kg","diagnosis_date","contraindications","comorbidities","allergies"].forEach((key) => { if (!fields[key]) fields[key] = null; });
