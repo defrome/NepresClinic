@@ -3,7 +3,7 @@ from datetime import time
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.modules.treatments.infrastructure.model import (MedicationDoseModel, PatientActivityModel, PlanBlockModel, PlanDayModel, TemplateBlockModel, TemplateDayModel, TreatmentPlanModel, TreatmentTemplateModel)
+from app.infrastructure.treatments_models import (MedicationDoseModel, PatientActivityModel, PlanBlockModel, PlanDayModel, TemplateBlockModel, TemplateDayModel, TreatmentPlanModel, TreatmentTemplateModel)
 
 
 class TreatmentRepository:
@@ -24,6 +24,15 @@ class TreatmentRepository:
     def plan(self, plan_id: int): return self.session.get(TreatmentPlanModel, plan_id)
     def plan_days(self, plan_id: int): return self.session.scalars(select(PlanDayModel).where(PlanDayModel.plan_id == plan_id).order_by(PlanDayModel.day_number)).all()
     def plan_day(self, plan_id: int, day_number: int): return self.session.scalar(select(PlanDayModel).where(PlanDayModel.plan_id == plan_id, PlanDayModel.day_number == day_number))
+    def ensure_plan_day(self, plan: TreatmentPlanModel, day_number: int):
+        existing = {day.day_number for day in self.plan_days(plan.id)}
+        for number in range(1, day_number + 1):
+            if number not in existing:
+                self.session.add(PlanDayModel(plan_id=plan.id, day_number=number, title=None))
+        if not plan.duration_days or day_number > plan.duration_days:
+            plan.duration_days = day_number
+        self.session.commit()
+        return self.plan_day(plan.id, day_number)
     def plan_blocks(self, day_id: int): return self.session.scalars(select(PlanBlockModel).where(PlanBlockModel.plan_day_id == day_id).order_by(PlanBlockModel.position)).all()
     def medications(self, day_id: int): return self.session.scalars(select(MedicationDoseModel).where(MedicationDoseModel.plan_day_id == day_id).order_by(MedicationDoseModel.position)).all()
     def clone_day(self, plan_id: int, day_number: int, title: str | None, blocks: list[dict], medications: list[dict]):
@@ -44,7 +53,7 @@ class TreatmentRepository:
             if value is not None: setattr(item, key, value)
         self.session.commit(); self.session.refresh(item); return item
     def patient_by_token(self, token: str):
-        from app.modules.patients_model import PatientModel
+        from app.infrastructure.patients_model import PatientModel
         return self.session.scalar(select(PatientModel).where(PatientModel.magic_link_token == token))
     def active_plan(self, patient_id: int): return self.session.scalar(select(TreatmentPlanModel).where(TreatmentPlanModel.patient_id == patient_id, TreatmentPlanModel.status == "active").order_by(TreatmentPlanModel.id.desc()))
     def activities(self, patient_id: int, plan_id: int): return self.session.scalars(select(PatientActivityModel).where(PatientActivityModel.patient_id == patient_id, PatientActivityModel.plan_id == plan_id)).all()
@@ -53,3 +62,8 @@ class TreatmentRepository:
         if current: current.answer = answer
         else: self.session.add(PatientActivityModel(patient_id=patient_id, plan_id=plan_id, target_type=target_type, target_id=target_id, answer=answer))
         self.session.commit()
+    def uncomplete(self, patient_id: int, plan_id: int, target_type: str, target_id: int):
+        item = self.session.scalar(select(PatientActivityModel).where(PatientActivityModel.patient_id == patient_id, PatientActivityModel.plan_id == plan_id, PatientActivityModel.target_type == target_type, PatientActivityModel.target_id == target_id))
+        if item:
+            self.session.delete(item)
+            self.session.commit()

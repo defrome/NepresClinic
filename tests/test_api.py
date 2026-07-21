@@ -2,7 +2,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.infrastructure.database import Base, SessionLocal, engine
-from app.infrastructure.models import DoctorModel, OrganizationModel, PatientModel
 from app.main import app, seed_admin
 
 
@@ -105,10 +104,19 @@ def test_template_assignment_and_patient_magic_link(client):
     })
     assert plan.status_code == 201
     assert len(plan.json()["days"]) == 5
+    extended = client.post(f"/api/v1/treatment-plans/{plan.json()['id']}/days/30/blocks", headers=headers, json={"block_type": "checklist", "title": "Контроль на 30-й день"})
+    assert extended.status_code == 200
+    assert extended.json()["duration_days"] == 30
+    assert len(extended.json()["days"]) == 30
     today = client.get(f"/api/v1/patient-access/{patient['magic_link_token']}/today")
     assert today.status_code == 200
+    assert today.json()["course_total_count"] >= 1
+    assert today.json()["doctor_name"] == "Врач реабилитации"
     block_id = today.json()["blocks"][0]["id"]
     assert client.post(f"/api/v1/patient-access/{patient['magic_link_token']}/block/{block_id}/complete", json={"answer": "Хорошо"}).status_code == 204
+    detail = client.get(f"/api/v1/treatment-plans/{plan.json()['id']}", headers=headers).json()
+    assert detail["days"][0]["blocks"][0]["patient_answer"] == "Хорошо"
+    assert client.delete(f"/api/v1/patient-access/{patient['magic_link_token']}/block/{block_id}/complete").status_code == 204
     long_plan = client.post("/api/v1/treatment-plans", headers=headers, json={
         "patient_id": patient["id"], "title": "План на месяц", "duration_days": 30, "starts_on": "2026-07-21",
     })

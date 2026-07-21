@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.entities import Organization
-from app.modules.organizations_model import OrganizationModel
+from app.infrastructure.organizations_model import OrganizationModel
 
 
 def to_entity(item: OrganizationModel) -> Organization:

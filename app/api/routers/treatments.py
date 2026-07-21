@@ -5,9 +5,9 @@ from app.api.dependencies import current_doctor
 from app.api.schemas import ActivityCreate, BlockCreate, MedicationCreate, TreatmentPlanCreate, TreatmentPlanUpdate, TreatmentTemplateCreate
 from app.domain.entities import Doctor
 from app.infrastructure.database import get_session
-from app.modules.patients_repository import SqlAlchemyPatientRepository
-from app.modules.treatments_repository import TreatmentRepository
-from app.modules.treatments_service import TreatmentService
+from app.infrastructure.patients_repository import SqlAlchemyPatientRepository
+from app.infrastructure.treatments_repository import TreatmentRepository
+from app.application.treatments import TreatmentService
 
 router = APIRouter(tags=["Лечение"])
 
@@ -66,7 +66,18 @@ def patient_today(token: str, session: Session = Depends(get_session)):
     return service(session).patient_today(token)
 
 
+@router.get("/patient-access/{token}/days/{day_number}", summary="Получить задания пациента за выбранный день")
+def patient_day(token: str, day_number: int, session: Session = Depends(get_session)):
+    return service(session).patient_day(token, day_number)
+
+
 @router.post("/patient-access/{token}/{target_type}/{target_id}/complete", status_code=status.HTTP_204_NO_CONTENT, summary="Отметить задание пациента выполненным")
 def complete_item(token: str, target_type: str, target_id: int, data: ActivityCreate, session: Session = Depends(get_session)):
     if target_type not in {"block", "medication"}: return {"detail": "Недопустимый тип действия"}
     service(session).complete_patient_item(token, target_type, target_id, data.answer)
+
+
+@router.delete("/patient-access/{token}/{target_type}/{target_id}/complete", status_code=status.HTTP_204_NO_CONTENT, summary="Отменить отметку пациента")
+def uncomplete_item(token: str, target_type: str, target_id: int, session: Session = Depends(get_session)):
+    if target_type not in {"block", "medication"}: return {"detail": "Недопустимый тип действия"}
+    service(session).uncomplete_patient_item(token, target_type, target_id)

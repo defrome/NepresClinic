@@ -10,10 +10,10 @@ from app.api.routes import router
 from app.application.security import hash_password
 from app.domain.exceptions import ConflictError, DomainError, ForbiddenError, NotFoundError
 from app.infrastructure.database import Base, SessionLocal, engine
-from app.modules.doctors_model import DoctorModel
-from app.modules.organizations_model import OrganizationModel  # register ORM mappings
-from app.modules.patients_model import PatientModel  # register patient mapping
-from app.modules.treatments.infrastructure.model import MedicationDoseModel, PlanBlockModel, PlanDayModel, TreatmentPlanModel  # register treatment mappings
+from app.infrastructure.doctors_model import DoctorModel
+from app.infrastructure.organizations_model import OrganizationModel  # register ORM mappings
+from app.infrastructure.patients_model import PatientModel  # register patient mapping
+from app.infrastructure.treatments_models import MedicationDoseModel, PlanBlockModel, PlanDayModel, TreatmentPlanModel  # register treatment mappings
 from app.settings import settings
 
 

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.application.security import decode_token
 from app.domain.entities import Doctor
 from app.infrastructure.database import get_session
-from app.infrastructure.repositories import SqlAlchemyDoctorRepository
+from app.infrastructure.doctors_repository import SqlAlchemyDoctorRepository
 from app.settings import settings
 
 bearer = HTTPBearer()

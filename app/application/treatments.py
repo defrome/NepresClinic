@@ -1,8 +1,9 @@
 from datetime import date
 
-from app.domain.exceptions import ForbiddenError, NotFoundError
-from app.modules.patients_repository import SqlAlchemyPatientRepository
-from app.modules.treatments_repository import TreatmentRepository
+from app.domain.exceptions import ConflictError, ForbiddenError, NotFoundError
+from app.infrastructure.doctors_model import DoctorModel
+from app.infrastructure.patients_repository import SqlAlchemyPatientRepository
+from app.infrastructure.treatments_repository import TreatmentRepository
 
 
 class TreatmentService:
@@ -47,7 +48,11 @@ class TreatmentService:
         plan = self.repository.plan(plan_id)
         if not plan: raise NotFoundError("План лечения не найден")
         self._doctor_scope(actor, plan.organization_id)
-        return {"id": plan.id, "patient_id": plan.patient_id, "title": plan.title, "duration_days": plan.duration_days, "starts_on": plan.starts_on, "status": plan.status, "days": [{"id": day.id, "day_number": day.day_number, "title": day.title, "blocks": [self._block_view(block) for block in self.repository.plan_blocks(day.id)], "medications": [{"id": med.id, "medication_name": med.medication_name, "dosage": med.dosage, "scheduled_time": med.scheduled_time.isoformat() if med.scheduled_time else None, "question": med.question, "is_required": med.is_required} for med in self.repository.medications(day.id)]} for day in self.repository.plan_days(plan.id)]}
+        activities = {(item.target_type, item.target_id): item for item in self.repository.activities(plan.patient_id, plan.id)}
+        def activity_view(item, target_type):
+            activity = activities.get((target_type, item.id))
+            return {"completed": bool(activity), "completed_at": activity.completed_at if activity else None, "patient_answer": activity.answer if activity else None}
+        return {"id": plan.id, "patient_id": plan.patient_id, "title": plan.title, "duration_days": plan.duration_days, "starts_on": plan.starts_on, "status": plan.status, "days": [{"id": day.id, "day_number": day.day_number, "title": day.title, "blocks": [self._block_view(block) | activity_view(block, "block") for block in self.repository.plan_blocks(day.id)], "medications": [{"id": med.id, "medication_name": med.medication_name, "dosage": med.dosage, "scheduled_time": med.scheduled_time.isoformat() if med.scheduled_time else None, "question": med.question, "is_required": med.is_required} | activity_view(med, "medication") for med in self.repository.medications(day.id)]} for day in self.repository.plan_days(plan.id)]}
     def update_plan(self, actor, plan_id: int, data: dict):
         plan = self.repository.plan(plan_id)
         if not plan: raise NotFoundError("План лечения не найден")
@@ -55,27 +60,46 @@ class TreatmentService:
     def add_block(self, actor, plan_id: int, day_number: int, data: dict):
         plan = self.repository.plan(plan_id)
         if not plan: raise NotFoundError("План лечения не найден")
-        self._doctor_scope(actor, plan.organization_id); day = self.repository.plan_day(plan_id, day_number)
-        if not day: raise NotFoundError("День лечения не найден")
+        self._doctor_scope(actor, plan.organization_id)
+        if day_number < 1 or day_number > 365: raise ConflictError("Номер дня должен быть от 1 до 365")
+        day = self.repository.ensure_plan_day(plan, day_number)
         self.repository.add_block(day.id, data); return self.plan_detail(actor, plan_id)
     def add_medication(self, actor, plan_id: int, day_number: int, data: dict):
         plan = self.repository.plan(plan_id)
         if not plan: raise NotFoundError("План лечения не найден")
-        self._doctor_scope(actor, plan.organization_id); day = self.repository.plan_day(plan_id, day_number)
-        if not day: raise NotFoundError("День лечения не найден")
+        self._doctor_scope(actor, plan.organization_id)
+        if day_number < 1 or day_number > 365: raise ConflictError("Номер дня должен быть от 1 до 365")
+        day = self.repository.ensure_plan_day(plan, day_number)
         self.repository.add_medication(day.id, data); return self.plan_detail(actor, plan_id)
     def patient_today(self, token: str):
+        return self.patient_day(token, None)
+    def patient_day(self, token: str, requested_day: int | None):
         patient = self.repository.patient_by_token(token)
         if not patient: raise NotFoundError("Ссылка пациента недействительна")
         plan = self.repository.active_plan(patient.id)
         if not plan: raise NotFoundError("Активный план лечения не найден")
-        day_number = max(1, min(plan.duration_days or 1, (date.today() - plan.starts_on).days + 1)); day = next((item for item in self.repository.plan_days(plan.id) if item.day_number == day_number), None)
+        today_number = max(1, min(plan.duration_days or 1, (date.today() - plan.starts_on).days + 1)); day_number = max(1, min(plan.duration_days or 1, requested_day or today_number)); day = next((item for item in self.repository.plan_days(plan.id) if item.day_number == day_number), None)
         if not day: raise NotFoundError("День лечения не найден")
-        activities = {(item.target_type, item.target_id) for item in self.repository.activities(patient.id, plan.id)}; blocks = [self._block_view(block) | {"completed": ("block", block.id) in activities} for block in self.repository.plan_blocks(day.id)]; meds = [{"id": med.id, "medication_name": med.medication_name, "dosage": med.dosage, "scheduled_time": med.scheduled_time.isoformat() if med.scheduled_time else None, "question": med.question, "completed": ("medication", med.id) in activities} for med in self.repository.medications(day.id)]
-        return {"patient_name": f"{patient.first_name} {patient.last_name}", "plan_id": plan.id, "plan_title": plan.title, "day_number": day_number, "duration_days": plan.duration_days, "completed_count": sum(item["completed"] for item in blocks) + sum(item["completed"] for item in meds), "total_count": len(blocks) + len(meds), "blocks": blocks, "medications": meds}
+        activity_items = self.repository.activities(patient.id, plan.id); activities = {(item.target_type, item.target_id): item for item in activity_items}
+        def current_activity(item, target_type):
+            activity = activities.get((target_type, item.id))
+            return {"completed": bool(activity), "completed_at": activity.completed_at if activity else None, "answer": activity.answer if activity else None}
+        blocks = [self._block_view(block) | current_activity(block, "block") for block in self.repository.plan_blocks(day.id)]
+        meds = [{"id": med.id, "medication_name": med.medication_name, "dosage": med.dosage, "scheduled_time": med.scheduled_time.isoformat() if med.scheduled_time else None, "question": med.question, "is_required": med.is_required} | current_activity(med, "medication") for med in self.repository.medications(day.id)]
+        all_days = self.repository.plan_days(plan.id); all_items = sum((self.repository.plan_blocks(item.id) + self.repository.medications(item.id) for item in all_days), [])
+        previous_day = next((item for item in all_days if item.day_number == day_number - 1), None)
+        previous_incomplete = bool(previous_day and any(("block", item.id) not in activities for item in self.repository.plan_blocks(previous_day.id)) or previous_day and any(("medication", item.id) not in activities for item in self.repository.medications(previous_day.id)))
+        doctor = self.repository.session.get(DoctorModel, plan.doctor_id)
+        return {"patient_name": f"{patient.first_name} {patient.last_name}", "plan_id": plan.id, "plan_title": plan.title, "plan_status": plan.status, "day_number": day_number, "duration_days": plan.duration_days, "completed_count": sum(item["completed"] for item in blocks) + sum(item["completed"] for item in meds), "total_count": len(blocks) + len(meds), "course_completed_count": len(activity_items), "course_total_count": len(all_items), "previous_day_incomplete": previous_incomplete, "doctor_name": doctor.full_name if doctor else None, "doctor_email": doctor.email if doctor else None, "blocks": blocks, "medications": meds}
     def complete_patient_item(self, token: str, target_type: str, target_id: int, answer: str | None):
         patient = self.repository.patient_by_token(token)
         if not patient: raise NotFoundError("Ссылка пациента недействительна")
         plan = self.repository.active_plan(patient.id)
         if not plan: raise NotFoundError("Активный план лечения не найден")
         self.repository.complete(patient.id, plan.id, target_type, target_id, answer)
+    def uncomplete_patient_item(self, token: str, target_type: str, target_id: int):
+        patient = self.repository.patient_by_token(token)
+        if not patient: raise NotFoundError("Ссылка пациента недействительна")
+        plan = self.repository.active_plan(patient.id)
+        if not plan: raise NotFoundError("Активный план лечения не найден")
+        self.repository.uncomplete(patient.id, plan.id, target_type, target_id)
