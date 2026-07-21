@@ -112,6 +112,9 @@ def test_template_assignment_and_patient_magic_link(client):
     assert today.status_code == 200
     assert today.json()["course_total_count"] >= 1
     assert today.json()["doctor_name"] == "Врач реабилитации"
+    summary = client.get("/api/v1/treatment-plans", headers=headers).json()[0]
+    assert "today_total_count" in summary
+    assert "today_completed_count" in summary
     block_id = today.json()["blocks"][0]["id"]
     assert client.post(f"/api/v1/patient-access/{patient['magic_link_token']}/block/{block_id}/complete", json={"answer": "Хорошо"}).status_code == 204
     detail = client.get(f"/api/v1/treatment-plans/{plan.json()['id']}", headers=headers).json()

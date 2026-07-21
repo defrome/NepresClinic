@@ -43,7 +43,14 @@ class TreatmentService:
         days = self.repository.plan_days(plan.id)
         total = sum(len(self.repository.plan_blocks(day.id)) + len(self.repository.medications(day.id)) for day in days)
         activities = self.repository.activities(plan.patient_id, plan.id)
-        return {"id": plan.id, "patient_id": plan.patient_id, "title": plan.title, "duration_days": plan.duration_days, "starts_on": plan.starts_on, "status": plan.status, "completed_count": len(activities), "total_count": total, "last_activity_at": max((item.completed_at for item in activities), default=None)}
+        today_number = max(1, min(plan.duration_days or 1, (date.today() - plan.starts_on).days + 1))
+        today = next((day for day in days if day.day_number == today_number), None)
+        today_blocks = self.repository.plan_blocks(today.id) if today else []
+        today_medications = self.repository.medications(today.id) if today else []
+        activity_keys = {(item.target_type, item.target_id) for item in activities}
+        today_total = len(today_blocks) + len(today_medications)
+        today_completed = sum(("block", item.id) in activity_keys for item in today_blocks) + sum(("medication", item.id) in activity_keys for item in today_medications)
+        return {"id": plan.id, "patient_id": plan.patient_id, "title": plan.title, "duration_days": plan.duration_days, "starts_on": plan.starts_on, "status": plan.status, "completed_count": len(activities), "total_count": total, "today_day_number": today_number, "today_completed_count": today_completed, "today_total_count": today_total, "last_activity_at": max((item.completed_at for item in activities), default=None)}
     def plan_detail(self, actor, plan_id: int):
         plan = self.repository.plan(plan_id)
         if not plan: raise NotFoundError("План лечения не найден")
