@@ -101,11 +101,16 @@ def test_template_assignment_and_patient_magic_link(client):
     })
     assert template.status_code == 201
     plan = client.post("/api/v1/treatment-plans", headers=headers, json={
-        "patient_id": patient["id"], "template_id": template.json()["id"], "starts_on": "2026-07-21",
+        "patient_id": patient["id"], "template_id": template.json()["id"], "duration_days": 5, "starts_on": "2026-07-21",
     })
     assert plan.status_code == 201
-    assert len(plan.json()["days"]) == 2
+    assert len(plan.json()["days"]) == 5
     today = client.get(f"/api/v1/patient-access/{patient['magic_link_token']}/today")
     assert today.status_code == 200
     block_id = today.json()["blocks"][0]["id"]
     assert client.post(f"/api/v1/patient-access/{patient['magic_link_token']}/block/{block_id}/complete", json={"answer": "Хорошо"}).status_code == 204
+    long_plan = client.post("/api/v1/treatment-plans", headers=headers, json={
+        "patient_id": patient["id"], "title": "План на месяц", "duration_days": 30, "starts_on": "2026-07-21",
+    })
+    assert long_plan.status_code == 201
+    assert len(long_plan.json()["days"]) == 30

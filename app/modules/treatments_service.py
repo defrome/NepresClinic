@@ -36,7 +36,13 @@ class TreatmentService:
         return self.plan_detail(actor, plan.id)
     def _block_input(self, block): return {"block_type": block.block_type, "title": block.title, "content": block.content, "resource_url": block.resource_url, "question": block.question, "is_required": block.is_required}
     def _block_view(self, block): return {"id": block.id, "block_type": block.block_type, "title": block.title, "content": block.content, "resource_url": block.resource_url, "question": block.question, "is_required": block.is_required}
-    def plans(self, actor): return self.repository.plans(actor.organization_id)
+    def plans(self, actor):
+        return [self._plan_summary(plan) for plan in self.repository.plans(actor.organization_id)]
+    def _plan_summary(self, plan):
+        days = self.repository.plan_days(plan.id)
+        total = sum(len(self.repository.plan_blocks(day.id)) + len(self.repository.medications(day.id)) for day in days)
+        activities = self.repository.activities(plan.patient_id, plan.id)
+        return {"id": plan.id, "patient_id": plan.patient_id, "title": plan.title, "duration_days": plan.duration_days, "starts_on": plan.starts_on, "status": plan.status, "completed_count": len(activities), "total_count": total, "last_activity_at": max((item.completed_at for item in activities), default=None)}
     def plan_detail(self, actor, plan_id: int):
         plan = self.repository.plan(plan_id)
         if not plan: raise NotFoundError("План лечения не найден")

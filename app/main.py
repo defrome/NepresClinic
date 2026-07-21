@@ -17,6 +17,15 @@ from app.modules.treatments.infrastructure.model import MedicationDoseModel, Pla
 from app.settings import settings
 
 
+class NoCacheStaticFiles(StaticFiles):
+    """Development UI assets must refresh immediately after a local edit."""
+
+    async def get_response(self, path: str, scope: dict):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        return response
+
+
 def seed_admin() -> None:
     """Create the fixed bootstrap account exactly once."""
     session = SessionLocal()
@@ -118,41 +127,41 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(
-    title="Nepres Clinic API",
+    title="Nepres Clinic — API клиники",
     version="0.1.0",
-    description="API для сопровождения назначенного врачом маршрута лечения.",
+    description="API клиники для управления врачами, пациентами и назначенным лечением.",
     lifespan=lifespan,
 )
 app.include_router(router)
 admin_page_directory = Path(__file__).parent / "admin_page"
 doctor_page_directory = Path(__file__).parent / "doctor_page"
 patient_page_directory = Path(__file__).parent / "patient_page"
-app.mount("/admin-assets", StaticFiles(directory=admin_page_directory), name="admin-assets")
-app.mount("/doctor-assets", StaticFiles(directory=doctor_page_directory), name="doctor-assets")
-app.mount("/patient-assets", StaticFiles(directory=patient_page_directory), name="patient-assets")
+app.mount("/admin-assets", NoCacheStaticFiles(directory=admin_page_directory), name="admin-assets")
+app.mount("/doctor-assets", NoCacheStaticFiles(directory=doctor_page_directory), name="doctor-assets")
+app.mount("/patient-assets", NoCacheStaticFiles(directory=patient_page_directory), name="patient-assets")
 
 
 @app.get("/get_admin_page", include_in_schema=False)
 @app.get("/admin", include_in_schema=False)
 def get_admin_page() -> FileResponse:
     """Serve the native HTML/CSS/JS administration interface."""
-    return FileResponse(admin_page_directory / "index.html")
+    return FileResponse(admin_page_directory / "index.html", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 @app.get("/get_doctor_page", include_in_schema=False)
 @app.get("/doctor", include_in_schema=False)
 def get_doctor_page() -> FileResponse:
     """Serve the native doctor workspace."""
-    return FileResponse(doctor_page_directory / "index.html")
+    return FileResponse(doctor_page_directory / "index.html", headers={"Cache-Control": "no-store, max-age=0"})
 
 
 @app.get("/p/{magic_token}", include_in_schema=False)
 def get_patient_page(magic_token: str) -> FileResponse:
     """Patient workspace; the token is validated by its public API calls."""
-    return FileResponse(patient_page_directory / "index.html")
+    return FileResponse(patient_page_directory / "index.html", headers={"Cache-Control": "no-store, max-age=0"})
 
 
-@app.get("/health", tags=["system"])
+@app.get("/health", tags=["Система"], summary="Проверка доступности API")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
