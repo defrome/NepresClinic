@@ -1,3 +1,3 @@
-from app.modules.doctors.infrastructure.model import DoctorModel
-from app.modules.organizations.infrastructure.model import OrganizationModel
-from app.modules.patients.infrastructure.model import PatientModel
+from app.modules.doctors_model import DoctorModel
+from app.modules.organizations_model import OrganizationModel
+from app.modules.patients_model import PatientModel

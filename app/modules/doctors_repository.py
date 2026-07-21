@@ -3,7 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.entities import Doctor
-from app.modules.doctors.infrastructure.model import DoctorModel
+from app.modules.doctors_model import DoctorModel
 
 
 def to_entity(item: DoctorModel) -> Doctor:

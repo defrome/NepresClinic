@@ -3,11 +3,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.entities import Patient
-from app.modules.patients.infrastructure.model import PatientModel
+from app.modules.patients_model import PatientModel
 
 
 def to_entity(item: PatientModel) -> Patient:
-    return Patient(item.id, item.organization_id, item.doctor_id, item.first_name, item.last_name, item.birth_date, item.sex, item.phone, item.email, item.height_cm, item.weight_kg, item.emergency_contact, item.data_processing_consent_at, item.diagnosis, item.diagnosis_date, item.treatment_start_date, item.doctor_notes, item.contraindications, item.comorbidities, item.allergies, item.created_at)
+    return Patient(item.id, item.organization_id, item.doctor_id, item.first_name, item.last_name, item.birth_date, item.sex, item.phone, item.email, item.height_cm, item.weight_kg, item.emergency_contact, item.data_processing_consent_at, item.diagnosis, item.diagnosis_date, item.treatment_start_date, item.doctor_notes, item.contraindications, item.comorbidities, item.allergies, item.magic_link_token, item.created_at)
 
 
 class SqlAlchemyPatientRepository:

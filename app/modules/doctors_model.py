@@ -1,4 +1,4 @@
-"""Doctor persistence model owned by the doctor context."""
+"""Doctor persistence model."""
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, func

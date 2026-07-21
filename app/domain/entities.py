@@ -43,6 +43,7 @@ class Patient:
     contraindications: str | None
     comorbidities: str | None
     allergies: str | None
+    magic_link_token: str
     created_at: datetime
 
     @property

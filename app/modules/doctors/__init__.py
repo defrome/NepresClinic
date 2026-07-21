@@ -1,1 +1,0 @@
-"""Doctor management context."""

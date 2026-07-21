@@ -89,3 +89,23 @@ def test_patient_requires_contact_and_consent(client):
     headers = login(client, "doctor.v", "safe-password")
     assert client.post("/api/v1/patients", headers=headers, json=patient_payload(phone=None, email=None)).status_code == 422
     assert client.post("/api/v1/patients", headers=headers, json=patient_payload(consent_to_data_processing=False)).status_code == 409
+
+
+def test_template_assignment_and_patient_magic_link(client):
+    client.post("/api/v1/auth/register", json={"organization_name": "Реабилитация", "username": "rehab.doctor", "password": "safe-password", "full_name": "Врач реабилитации"})
+    headers = login(client, "rehab.doctor", "safe-password")
+    patient = client.post("/api/v1/patients", headers=headers, json=patient_payload()).json()
+    template = client.post("/api/v1/treatment-templates", headers=headers, json={
+        "title": "Восстановление осанки", "default_duration_days": 2,
+        "days": [{"day_number": 1, "blocks": [{"block_type": "exercise", "title": "Комплекс упражнений", "question": "Как вы себя чувствуете?"}]}],
+    })
+    assert template.status_code == 201
+    plan = client.post("/api/v1/treatment-plans", headers=headers, json={
+        "patient_id": patient["id"], "template_id": template.json()["id"], "starts_on": "2026-07-21",
+    })
+    assert plan.status_code == 201
+    assert len(plan.json()["days"]) == 2
+    today = client.get(f"/api/v1/patient-access/{patient['magic_link_token']}/today")
+    assert today.status_code == 200
+    block_id = today.json()["blocks"][0]["id"]
+    assert client.post(f"/api/v1/patient-access/{patient['magic_link_token']}/block/{block_id}/complete", json={"answer": "Хорошо"}).status_code == 204

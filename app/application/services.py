@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import secrets
 
 from app.application.ports import DoctorRepository, OrganizationRepository, PatientRepository
 from app.application.security import hash_password, verify_password
@@ -74,7 +75,7 @@ class PatientService:
             raise ForbiddenError("Пациента создаёт только лечащий врач")
         if not consent_to_data_processing:
             raise ConflictError("Нужно получить согласие на обработку персональных данных")
-        return self.patients.create(actor.organization_id, actor.id, data_processing_consent_at=datetime.now(timezone.utc), **fields)
+        return self.patients.create(actor.organization_id, actor.id, data_processing_consent_at=datetime.now(timezone.utc), magic_link_token=secrets.token_urlsafe(32), **fields)
     def update(self, actor: Doctor, patient_id: int, **fields: object) -> Patient:
         self._own(actor, patient_id)
         item = self.patients.update(patient_id, **fields)

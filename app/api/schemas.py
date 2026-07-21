@@ -128,4 +128,72 @@ class PatientOut(ORMModel):
     contraindications: str | None
     comorbidities: str | None
     allergies: str | None
+    magic_link_token: str
     created_at: datetime
+
+
+BlockType = Literal["text", "video", "pdf", "exercise", "question", "checklist", "photo", "link"]
+
+
+class BlockCreate(BaseModel):
+    block_type: BlockType
+    title: str = Field(min_length=1, max_length=200)
+    content: str | None = Field(default=None, max_length=10000)
+    resource_url: str | None = Field(default=None, max_length=2000)
+    question: str | None = Field(default=None, max_length=5000)
+    is_required: bool = True
+
+
+class TemplateDayCreate(BaseModel):
+    day_number: int = Field(ge=1, le=365)
+    title: str | None = Field(default=None, max_length=160)
+    blocks: list[BlockCreate] = Field(default_factory=list)
+
+
+class TreatmentTemplateCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=160)
+    description: str | None = Field(default=None, max_length=5000)
+    default_duration_days: int | None = Field(default=None, ge=1, le=365)
+    days: list[TemplateDayCreate] = Field(default_factory=list)
+
+
+class MedicationCreate(BaseModel):
+    medication_name: str = Field(min_length=1, max_length=200)
+    dosage: str | None = Field(default=None, max_length=160)
+    scheduled_time: str | None = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    question: str | None = Field(default=None, max_length=5000)
+    is_required: bool = True
+
+
+class PlanDayCreate(TemplateDayCreate):
+    medications: list[MedicationCreate] = Field(default_factory=list)
+
+
+class TreatmentPlanCreate(BaseModel):
+    patient_id: int
+    template_id: int | None = None
+    title: str | None = Field(default=None, max_length=160)
+    duration_days: int | None = Field(default=None, ge=1, le=365)
+    starts_on: date
+    days: list[PlanDayCreate] = Field(default_factory=list)
+
+
+class TreatmentPlanUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=160)
+    status: Literal["active", "paused", "completed"] | None = None
+
+
+class ActivityCreate(BaseModel):
+    answer: str | None = Field(default=None, max_length=10000)
+
+
+class PatientAccessOut(BaseModel):
+    patient_name: str
+    plan_id: int
+    plan_title: str
+    day_number: int
+    duration_days: int | None
+    completed_count: int
+    total_count: int
+    blocks: list[dict]
+    medications: list[dict]
